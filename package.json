@@ -1,0 +1,19 @@
+{
+  "name": "invoice-keeper-and-analytics-microservice-backend",
+  "version": "1.0.0",
+  "description": "A NestJS and Kubernetes microservice back-end for the invoice Keeper and Analytics App",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LesibaneB/invoice-keeper-and-analytics-microservice-backend.git"
+  },
+  "author": "Bonakele Lesibane",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LesibaneB/invoice-keeper-and-analytics-microservice-backend/issues"
+  },
+  "homepage": "https://github.com/LesibaneB/invoice-keeper-and-analytics-microservice-backend#readme"
+}
