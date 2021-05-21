@@ -1,5 +1,5 @@
 import { OTPRepository } from './repositories/otp-repository';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { AccountRepository } from './repositories/account-repository';
 import { CreateAccountDto } from './dto/create-account.dto';
 import * as bcrypt from 'bcrypt';
@@ -22,6 +22,7 @@ import {
 import { VerifyAccountDTO } from './dto/verify-otp.dto';
 import { SendAccountVerificationDTO } from './dto/resend-otp.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
+import { ClientProxy } from '@nestjs/microservices';
 
 const SALT_ROUNDS = 10;
 export const JWT_EXPIRY_PERIOD = 3600;
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly passwordRepo: PasswordRepository,
     private readonly otpRepository: OTPRepository,
+    @Inject('MAIL_SENDER_SERVICE') private client: ClientProxy,
   ) {}
 
   public async createAccount(
@@ -63,17 +65,17 @@ export class AuthService {
 
     await this.otpRepository.save(otp);
 
-    // const emailPayload: EmailPayload = {
-    //   to: emailAddress,
-    //   subject: 'OTP verification',
-    //   templateName: 'otp-email.html',
-    //   payload: {
-    //     recipient: firstName,
-    //     code: otpCode,
-    //   },
-    // };
+    const emailPayload = {
+      to: emailAddress,
+      subject: 'OTP verification',
+      templateName: 'otp-email.html',
+      payload: {
+        recipient: firstName,
+        code: otpCode,
+      },
+    };
 
-    // await this.emailService.sendOTPVericationEmail(emailPayload);
+    await this.client.send('send_mail', emailPayload).toPromise();
   }
 
   public async validateAccount(
@@ -167,17 +169,17 @@ export class AuthService {
 
     await this.otpRepository.save(otp);
 
-    // const emailPayload: EmailPayload = {
-    //   to: emailAddress,
-    //   subject: 'OTP verification',
-    //   templateName: 'otp-email.html',
-    //   payload: {
-    //     recipient: account.firstName,
-    //     code: otpCode,
-    //   },
-    // };
+    const emailPayload = {
+      to: emailAddress,
+      subject: 'OTP verification',
+      templateName: 'otp-email.html',
+      payload: {
+        recipient: account.firstName,
+        code: otpCode,
+      },
+    };
 
-    // await this.emailService.sendOTPVericationEmail(emailPayload);
+    await this.client.send('send_mail', emailPayload).toPromise();
   }
 
   public async resetPassword(payload: ResetPasswordDTO): Promise<void> {
