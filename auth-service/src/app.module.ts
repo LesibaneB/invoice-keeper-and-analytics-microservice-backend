@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
@@ -52,6 +53,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     PasswordRepository,
     OTPRepository,
     ConfigService,
+    {
+      provide: 'MAIL_SENDER_SERVICE',
+      useFactory: () => {
+        return ClientProxyFactory.create({
+          transport: Transport.TCP,
+          options: {
+            host: '0.0.0.0',
+            port: 3002,
+          },
+        });
+      },
+    },
   ],
   controllers: [AuthController],
 })

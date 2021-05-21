@@ -10,10 +10,16 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JWT_CONSTANTS } from './utils/const';
 import { getGCloudConfig } from './config/gcloud-automl-configuration';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   controllers: [InvoiceController],
-  providers: [InvoiceService, InvoiceRepository, FileUploadService],
+  providers: [
+    InvoiceService,
+    InvoiceRepository,
+    FileUploadService,
+    JwtStrategy,
+  ],
   imports: [
     ConfigModule,
     ConfigModule.forRoot({
