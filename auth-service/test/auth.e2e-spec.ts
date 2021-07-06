@@ -1,53 +1,59 @@
-import { ResetPasswordDTO } from './../src/auth/dto/reset-password.dto';
-import { VerifyAccountDTO } from './../src/auth/dto/verify-otp.dto';
-import { OTPRepository } from './../src/auth/repositories/otp-repository';
-import {
-  ACCOUNT_NOT_FOUND_ERROR_MESSAGE,
-  EMAIL_ADDRESS_INVALID,
-} from './../src/auth/utils/messages';
+import { AppModule } from '../src/app.module';
+import { AppModule as EmailAppModule } from '../../email-sender-service/src/app.module';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import { CreateAccountDto } from '../src/auth/dto/create-account.dto';
 import * as faker from 'faker';
-import {
-  AUTH_ACCOUNT_ERROR_MESSAGES,
-  LOGIN_UNAUTHORIZED_MESSAGE,
-} from '../src/auth/utils/messages';
+
 import {
   closeInMemoryMongoConnection,
   rootMongooseTestModule,
 } from '../src/utils/mongo-inmemory-db-handler';
-import { AccountRepository } from '../src/auth/repositories/account-repository';
-import { AuthModule } from '../src/auth/auth.module';
-import { SendAccountVerificationDTO } from '../src/auth/dto/resend-otp.dto';
+import { AccountRepository } from '../src/repositories/account-repository';
+import { OTPRepository } from '../src/repositories/otp-repository';
+import { CreateAccountDto } from '../src/dto/create-account.dto';
+import {
+  ACCOUNT_NOT_FOUND_ERROR_MESSAGE,
+  AUTH_ACCOUNT_ERROR_MESSAGES,
+  EMAIL_ADDRESS_INVALID,
+  LOGIN_UNAUTHORIZED_MESSAGE,
+} from '../src/utils/messages';
+import { VerifyAccountDTO } from '../src/dto/verify-otp.dto';
+import { SendAccountVerificationDTO } from '../src/dto/resend-otp.dto';
+import { ResetPasswordDTO } from '../src/dto/reset-password.dto';
+import { Transport, ClientProxy } from '@nestjs/microservices';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let accountRepo: AccountRepository;
   let otpRepo: OTPRepository;
+  let client: ClientProxy;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [rootMongooseTestModule(), AuthModule],
-    })
-      .overrideProvider('EmailSenderService')
-      .useFactory({
-        factory: () => ({
-          sendOTPVericationEmail: jest.fn(() => true),
-        }),
-      })
-      .compile();
+      imports: [rootMongooseTestModule(), AppModule, EmailAppModule],
+    }).compile();
 
     accountRepo = moduleFixture.get<AccountRepository>(AccountRepository);
     otpRepo = moduleFixture.get<OTPRepository>(OTPRepository);
 
     app = moduleFixture.createNestApplication();
+    app.connectMicroservice({
+      transport: Transport.TCP,
+      options: {
+        port: 3002,
+      },
+    });
     app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+
+    await app.startAllMicroservicesAsync();
+    await app.listenAsync(3001);
   });
 
-  afterEach(async () => await closeInMemoryMongoConnection());
+  afterEach(async () => {
+    await closeInMemoryMongoConnection();
+    await app.close();
+  });
 
   it('/auth/account (POST) should successfully create an account when called with correct payload', () => {
     const password = faker.internet.password();
