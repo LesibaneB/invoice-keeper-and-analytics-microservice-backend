@@ -21,13 +21,12 @@ import {
 import { VerifyAccountDTO } from '../src/dto/verify-otp.dto';
 import { SendAccountVerificationDTO } from '../src/dto/resend-otp.dto';
 import { ResetPasswordDTO } from '../src/dto/reset-password.dto';
-import { Transport, ClientProxy } from '@nestjs/microservices';
+import { Transport } from '@nestjs/microservices';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let accountRepo: AccountRepository;
   let otpRepo: OTPRepository;
-  let client: ClientProxy;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

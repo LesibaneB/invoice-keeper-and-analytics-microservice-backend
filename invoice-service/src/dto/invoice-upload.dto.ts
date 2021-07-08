@@ -3,7 +3,6 @@ import {
   IsNotEmpty,
   IsNumber,
   IsString,
-  isURL,
   ValidateNested,
 } from 'class-validator';
 import {
