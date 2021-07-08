@@ -6,6 +6,7 @@ export interface InvoiceModel {
   readonly total: number;
   readonly tax: number;
   readonly items: Array<Items>;
+  readonly invoiceImageURL: string;
 }
 
 export interface Items {

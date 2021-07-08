@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const microservice = app.connectMicroservice({
+  app.connectMicroservice({
     transport: Transport.TCP,
   } as TcpOptions);
   await app.startAllMicroservicesAsync();

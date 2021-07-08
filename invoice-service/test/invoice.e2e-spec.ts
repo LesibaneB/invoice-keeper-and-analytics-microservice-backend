@@ -1,22 +1,25 @@
-import { JwtTokenDto } from './../src/auth/dto/jwt-token.dto';
-import { InvoiceModule } from './../src/invoice/invoice.module';
+import { InvoiceDTO } from './../src/dto/invoice-upload.dto';
+import { Transport, ClientProxy } from '@nestjs/microservices';
+import { VerifyAccountDTO } from './../../auth-service/src/dto/verify-otp.dto';
+import { JwtTokenDto } from './../../auth-service/src/dto/jwt-token.dto';
+import { CreateAccountDto } from './../../auth-service/src/dto/create-account.dto';
+import { INVOICE_TEXT_EMPTY } from './../src/utils/messages';
+import { ExtractEntitiesDto } from './../src/dto/extract-entities.dto';
+import { InvoiceService } from './../src/services/invoice/invoice.service';
+import { InvoiceModel } from './../src/models/invoice';
+import { OTPRepository } from './../../auth-service/src/repositories/otp-repository';
+import { AccountRepository } from './../../auth-service/src/repositories/account-repository';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
-import { ExtractEntitiesDto } from '../src/invoice/dto/extract-entities.dto';
-import { INVOICE_TEXT_EMPTY } from '../src/invoice/utils/messages';
 import {
   closeInMemoryMongoConnection,
   rootMongooseTestModule,
 } from '../src/utils/mongo-inmemory-db-handler';
-import { InvoiceModel } from '../src/invoice/models/invoice';
 import * as faker from 'faker';
-import { AccountRepository } from '../src/auth/repositories/account-repository';
-import { OTPRepository } from '../src/auth/repositories/otp-repository';
-import { CreateAccountDto } from '../src/auth/dto/create-account.dto';
-import { VerifyAccountDTO } from '../src/auth/dto/verify-otp.dto';
-import { AuthModule } from '../src/auth/auth.module';
-import { InvoiceService } from '../src/invoice/services/invoice/invoice.service';
+import { AppModule } from '../src/app.module';
+import { AppModule as AuthModule } from '../../auth-service/src/app.module';
+import { AppModule as EmailModule } from '../../email-sender-service/src/app.module';
 
 describe('Invoice E2E', () => {
   let app: INestApplication;
@@ -30,6 +33,8 @@ describe('Invoice E2E', () => {
     time: '01:44PM',
     total: 84.78,
     tax: 3.98,
+    invoiceImageURL:
+      'https://storage.cloud.google.com/processed-invoice-image-data/1001-receipt.jpg',
     items: [
       {
         name: 'Arthurs Burger ChsBleu',
@@ -51,15 +56,8 @@ describe('Invoice E2E', () => {
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [rootMongooseTestModule(), AuthModule, InvoiceModule],
-    })
-      .overrideProvider('EmailSenderService')
-      .useFactory({
-        factory: () => ({
-          sendOTPVericationEmail: jest.fn(() => true),
-        }),
-      })
-      .compile();
+      imports: [rootMongooseTestModule(), AppModule, AuthModule, EmailModule],
+    }).compile();
 
     accountRepo = moduleFixture.get<AccountRepository>(AccountRepository);
     otpRepo = moduleFixture.get<OTPRepository>(OTPRepository);
@@ -69,11 +67,22 @@ describe('Invoice E2E', () => {
       .mockImplementation(async () => extractionResult);
 
     app = moduleFixture.createNestApplication();
+    app.connectMicroservice({
+      transport: Transport.TCP,
+      options: {
+        port: 3002,
+      },
+    });
     app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+
+    app.startAllMicroservices();
+    await app.listen(3003);
   });
 
-  afterEach(async () => await closeInMemoryMongoConnection());
+  afterEach(async () => {
+    await closeInMemoryMongoConnection();
+    await app.close();
+  });
 
   it('/invoice/extract-data (POST) should successfully extract entities and return results when called with correct payload', () => {
     const extractionPayload: ExtractEntitiesDto = {
@@ -179,7 +188,9 @@ describe('Invoice E2E', () => {
                   .send(extractionPayload)
                   .expect(201, extractionResult)
                   .then((invoiceExtractionResult) => {
-                    const invoice = JSON.parse(invoiceExtractionResult?.text);
+                    const invoice: InvoiceDTO = JSON.parse(
+                      invoiceExtractionResult?.text,
+                    );
                     return request(app.getHttpServer())
                       .post('/invoice/upload')
                       .set('Authorization', `Bearer ${jwt.access_token}`)

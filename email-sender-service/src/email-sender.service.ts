@@ -45,7 +45,7 @@ export class EmailSenderService {
     let template: string;
     try {
       template = readFileSync(
-        join(`${process.cwd()}/src/views/templates`, templateName),
+        join(`${__dirname}/views/templates`, templateName),
         'utf8',
       );
     } catch (error) {
